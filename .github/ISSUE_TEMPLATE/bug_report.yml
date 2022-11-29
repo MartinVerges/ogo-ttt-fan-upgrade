@@ -1,0 +1,85 @@
+name: Bug Report
+description: Report an bug. Please use this only if you identified a real error in the software.
+labels: ["Bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please use this only if you identified a real error in the software or hardware.
+        If you need help, please use the [german telegram channel](https://t.me/womo_LIN) or [english telegram channel](https://t.me/womolin_en).
+        Thanks for taking the time to fill out this bug report!
+
+  # General description
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the error is.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: How to reproduce
+      description: How can the error be reproduced?
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. Scroll down to '...'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: If applicable, add complete logs from the system logs.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: If applicable, add screenshots to help explain your problem.
+    validations:
+      required: false
+      
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: Operating System
+      description: Which operating system does your host have?
+      options:
+        - Linux (Ubuntu, CentOS,...)
+        - Windows
+        - macOS
+        - other (please specify in description)
+    validations:
+      required: true
+
+  # Client details
+  - type: textarea
+    id: client-details
+    attributes:
+      label: Client details
+      description: |
+        Details about your browser and operating system used to access.
+        Useful if interface issues need to be solved.
+      placeholder: |
+        - OS: [e.g. Windows, macOS, iOS, Android]
+        - Browser [e.g. Chrome, Firefox, Safari]
+        - Browser Version [e.g. 101.4]
+    validations:
+      required: false
