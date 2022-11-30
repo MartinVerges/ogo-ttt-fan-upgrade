@@ -142,8 +142,8 @@ void initWifiAndServices() {
 // and the TACHO signal pin is connected
 void IRAM_ATTR tacho_interrupt_handler() {
   unsigned long current_micros = micros();
-  tacho_delay = (current_micros - last_tacho_interrupt);
-  last_tacho_interrupt = current_micros;
+  tachoDelay = (current_micros - lastTachoInterrupt);
+  lastTachoInterrupt = current_micros;
 }
 
 void setup() {
@@ -157,6 +157,24 @@ void setup() {
   pinMode(button1.PIN, INPUT_PULLUP);
   attachInterrupt(button1.PIN, ISR_button1, FALLING);
   LOG_INFO_LN(F("done"));
+
+  // Initialize with the current runtime to avoid running the mixer on start!
+  lastMixerRun = runtime();
+
+  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(DPLUS_PIN, INPUT_PULLDOWN);
+
+  pinMode(MIXER_START_PIN, OUTPUT);
+  pinMode(MIXER_STATUS_PIN, INPUT_PULLDOWN);
+
+  pinMode(TACHO_PIN, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(TACHO_PIN), tacho_interrupt_handler, FALLING);
+
+  // run PWM on 25% on startup
+  analogWrite(PWM_PIN, targetPwmSpeed);
+  ledcSetup(PWM_CHANNEL, 25000, 10);
+  ledcAttachPin(PWM_PIN, PWM_CHANNEL);
+  ledcWrite(PWM_CHANNEL, targetPwmSpeed);
 
   if (!LittleFS.begin(true)) {
     LOG_INFO_LN(F("[FS] An Error has occurred while mounting LittleFS"));
@@ -173,8 +191,11 @@ void setup() {
     hostName = "ogotoilet";
     preferences.putString("hostName", hostName);
   }
-  enableWifi = preferences.getBool("enableWifi", true);
-  enableMqtt = preferences.getBool("enableMqtt", false);
+  enableWifi = preferences.getBool("enableWifi", enableWifi);
+  enableMqtt = preferences.getBool("enableMqtt", enableMqtt);
+
+  runMixerAfter = preferences.getULong("runMixerAfter", runMixerAfter);
+  noMixerBelowTempC = preferences.getInt("noMixerBelow", noMixerBelowTempC);
 
   if (enableWifi) initWifiAndServices();
   else LOG_INFO_LN(F("[WIFI] Not starting WiFi!"));
@@ -215,24 +236,6 @@ void setup() {
   ArduinoOTA.begin();
 
   preferences.end();
-
-  // Initialize with the current runtime to avoid running the mixer on start!
-  last_mixer_run = runtime();
-
-  pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(DPLUS_PIN, INPUT_PULLDOWN);
-
-  pinMode(MIXER_START_PIN, OUTPUT);
-  pinMode(MIXER_STATUS_PIN, INPUT_PULLDOWN);
-
-  pinMode(TACHO_PIN, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(TACHO_PIN), tacho_interrupt_handler, FALLING);
-
-  // run PWM on 25% on startup
-  analogWrite(PWM_PIN, target_pwm_speed);
-  ledcSetup(PWM_CHANNEL, 25000, 10);
-  ledcAttachPin(PWM_PIN, PWM_CHANNEL);
-  ledcWrite(PWM_CHANNEL, target_pwm_speed);
 
   // Update the DHT Temperature and Humidity in a background task
   xTaskCreate(&DHT_task, "DHT_task", 2048, NULL, 5, NULL);
@@ -285,12 +288,16 @@ void loop() {
     // we can run it after X hours of the last run.
     stateMixer = digitalRead(MIXER_STATUS_PIN);
     if (stateMixer) {
-      last_mixer_run = runtime();
+      lastMixerRun = runtime();
       LOG_INFO_LN("MIXER - runs now!");
-    } else if (runtime() - last_mixer_run > run_mixer_after) {
+    } else if (runtime() - lastMixerRun > runMixerAfter) {
       // Some time has passed, we run the mixer using a transistor on MIXER_START_PIN to improve the rotting
-      activateMixer();
-      last_mixer_run = runtime();
+      if (currentTemperature > noMixerBelowTempC) {
+        activateMixer();
+      } else {
+        LOG_INFO(F("[INFO] Temerature below configured limit, not running the mixer. Next retry after configured timeout."));
+      }
+      lastMixerRun = runtime();
     }
   }
 
@@ -304,14 +311,14 @@ void loop() {
     if (stateDplus || stateMixer) {
       // LOG_INFO_LN("DPLUS active, max power!");
       digitalWrite(LED_BUILTIN, HIGH);
-      target_pwm_speed = PWM_MAX_DUTY_CYCLE;
+      targetPwmSpeed = PWM_MAX_DUTY_CYCLE;
     } else {
       digitalWrite(LED_BUILTIN, LOW);
       uint16_t potiRead = analogRead(SPEED_PIN);
       statePoti = map(potiRead, 0, MAX_ADC_VALUE, 0, 100);
-      target_pwm_speed = map(potiRead, 0, MAX_ADC_VALUE, 0, PWM_MAX_DUTY_CYCLE);
+      targetPwmSpeed = map(potiRead, 0, MAX_ADC_VALUE, 0, PWM_MAX_DUTY_CYCLE);
     }
-    ledcWrite(PWM_CHANNEL, target_pwm_speed);
+    ledcWrite(PWM_CHANNEL, targetPwmSpeed);
   }
 
   if (runtime() - Timing.lastStatusUpdate > Timing.statusUpdateInterval) {
@@ -320,15 +327,15 @@ void loop() {
     String jsonOutput;
     StaticJsonDocument<1024> jsonDoc;
 
-    uint8_t fanSpeed = map(target_pwm_speed, 0, PWM_MAX_DUTY_CYCLE, 0, 100);
+    uint8_t fanSpeed = map(targetPwmSpeed, 0, PWM_MAX_DUTY_CYCLE, 0, 100);
     LOG_INFO("FAN Target Speed: ");
     LOG_INFO(fanSpeed);
     LOG_INFO_LN('%');
 
     // Tacho Delay is not working, if the FAN doesn't provide the TACHO signal
-    if (tacho_delay != 0) {
-      unsigned long freq = 100000000 / tacho_delay;
-      LOG_INFO("FAN Tacho delay: "); LOG_INFO(tacho_delay); LOG_INFO_LN("µs");
+    if (tachoDelay != 0) {
+      unsigned long freq = 100000000 / tachoDelay;
+      LOG_INFO("FAN Tacho delay: "); LOG_INFO(tachoDelay); LOG_INFO_LN("µs");
       LOG_INFO("FAN Frequency: ");   LOG_INFO(freq/100); LOG_INFO('.'); LOG_INFO(freq%100); LOG_INFO_LN("Hz");
 
       freq *= 60;
@@ -340,7 +347,7 @@ void loop() {
       jsonDoc["stateFanRpm"] = 0;
     }
 
-    jsonDoc["lastMixer"] = runtime() - last_mixer_run;
+    jsonDoc["lastMixer"] = runtime() - lastMixerRun;
     jsonDoc["stateMixer"] = stateMixer;
     jsonDoc["stateDplus"] = stateDplus;
     jsonDoc["statePoti"] = statePoti;

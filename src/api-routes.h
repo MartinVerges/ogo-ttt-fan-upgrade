@@ -162,6 +162,9 @@ void APIRegisterRoutes() {
 
       preferences.putString("otaPassword", jsonBuffer["otapassword"].as<String>());
 
+      preferences.putULong("runMixerAfter", jsonBuffer["runMixerAfterMinutes"].as<unsigned long>()*60*1000);
+      preferences.putInt("noMixerBelow", jsonBuffer["noMixerBelowTempC"].as<int8_t>());
+
       // MQTT Settings
       preferences.putUInt("mqttPort", jsonBuffer["mqttport"].as<uint16_t>());
       preferences.putString("mqttHost", jsonBuffer["mqtthost"].as<String>());
@@ -199,6 +202,9 @@ void APIRegisterRoutes() {
         doc["enablesoftap"] = WifiManager.getFallbackState();
 
         doc["otapassword"] = preferences.getString("otaPassword");
+
+        doc["runMixerAfterMinutes"] = preferences.getULong("runMixerAfter", runMixerAfter) / 60 / 1000 ;
+        doc["noMixerBelowTempC"] = preferences.getInt("noMixerBelow", noMixerBelowTempC);
 
         // MQTT
         doc["enablemqtt"] = enableMqtt;

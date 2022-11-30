@@ -41,11 +41,12 @@ const int PWM_MAX_DUTY_CYCLE = (int)(pow(2, 10)-1); // 10 Bit == 1024
 const int MIXER_STATUS_PIN = GPIO_NUM_33;         // Digital Input Pin
 const int MIXER_START_PIN = GPIO_NUM_27;          // Digital Output Pin to activate transistor
 
-unsigned long run_mixer_after = 12*60*60*1000;    // Automatically run the MIXER after some time (12h)
-unsigned long last_mixer_run = 0;                 // Last time the MIXER was active
-unsigned long last_tacho_interrupt = 0;           // Microseconds of the last TACHO interrupt (pull down)
-unsigned int tacho_delay = 0;
-unsigned int target_pwm_speed = PWM_MAX_DUTY_CYCLE * 0.25; // 0-1023 equals 0-100%, default to 25% speed
+unsigned long runMixerAfter = 12*60*60*1000;      // Automatically run the MIXER after some time (12h)
+unsigned long lastMixerRun = 0;                   // Last time the MIXER was active
+int8_t noMixerBelowTempC = 10;                    // Temperature under which the mixer won't run to prevent damage
+unsigned long lastTachoInterrupt = 0;             // Microseconds of the last TACHO interrupt (pull down)
+unsigned int tachoDelay = 0;
+unsigned int targetPwmSpeed = PWM_MAX_DUTY_CYCLE * 0.25; // 0-1023 equals 0-100%, default to 25% speed
 
 bool otaRunning = false;
 

@@ -47,6 +47,12 @@
     <Input id="enablewifi" bind:checked={config.enablewifi} type="checkbox" label="Enable WiFi" />
     <Input id="enablesoftap" bind:checked={config.enablesoftap} type="checkbox" label="Create AP if no WiFi is available" />
 </FormGroup>
+<FormGroup>
+    <Input id="runMixerAfterMinutes" bind:value={config.runMixerAfterMinutes} placeholder="720" maxlength="32"/>
+    <Label for="runMixerAfterMinutes">Run mixer every X Minutes (default 720 minutes == 12 hours)</Label>
+    <Input id="noMixerBelowTempC" bind:value={config.noMixerBelowTempC} placeholder="10" min="-255" max="255" type="number"/>
+    <Label for="noMixerBelowTempC">Prevent automatic mixer runs below temperature in °C (default +10°C)</Label>
+</FormGroup>
 <FormGroup> 
     <Label for="otapassword">OTA (Over The Air) firmware update password</Label>   
     <Input id="otapassword" bind:value={config.otapassword} placeholder="OTA Password" maxlength="32" />
