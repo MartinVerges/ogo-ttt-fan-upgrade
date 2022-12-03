@@ -102,9 +102,9 @@ void DHT_task(void *pvParameter) {
       currentHumidity = event.relative_humidity;
     }
 
-    // -- wait at least 2 sec before reading again ------------
+    // -- wait at least 10 sec before reading again ------------
     // The interval of whole process must be beyond 2 seconds !!
-    vTaskDelay(3000 / portTICK_RATE_MS);
+    vTaskDelay(10 * 1000 / portTICK_RATE_MS);
   }
 }
 
@@ -385,14 +385,15 @@ void loop() {
       Mqtt.client.publish((Mqtt.mqttTopic + "/json").c_str(), jsonOutput.c_str(), true);
       Mqtt.client.publish((Mqtt.mqttTopic + "/mixer").c_str(), String(stateMixer).c_str(), true);
       Mqtt.client.publish((Mqtt.mqttTopic + "/dplus").c_str(), String(stateDplus).c_str(), true);
+      Mqtt.client.publish((Mqtt.mqttTopic + "/dehumidification").c_str(), String(stateDehumidification).c_str(), true);
       Mqtt.client.publish((Mqtt.mqttTopic + "/potentiometer").c_str(), String(statePoti).c_str(), true);
       Mqtt.client.publish((Mqtt.mqttTopic + "/pwm-speed").c_str(), String(fanSpeed).c_str(), true);
       Mqtt.client.publish((Mqtt.mqttTopic + "/temperature").c_str(), String(currentTemperature).c_str(), true);
       Mqtt.client.publish((Mqtt.mqttTopic + "/humidity").c_str(), String(currentHumidity).c_str(), true);
     }
 
-    LOG_INFO("currentTemperature = "); LOG_INFO_LN(currentTemperature);
-    LOG_INFO("currentHumidity = ");    LOG_INFO_LN(currentHumidity);
+    LOG_INFO_F("Temperature:      %d °C\n", currentTemperature);
+    LOG_INFO_F("Humidity:         %d %%\n", currentHumidity);
   }
   sleepOrDelay();
 }
