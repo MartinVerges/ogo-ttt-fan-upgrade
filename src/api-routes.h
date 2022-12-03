@@ -169,12 +169,18 @@ void APIRegisterRoutes() {
       preferences.putInt("noMixerBelow", jsonBuffer["noMixerBelowTempC"].as<int8_t>());
       noMixerBelowTempC = jsonBuffer["noMixerBelowTempC"].as<int8_t>();
 
-      preferences.putInt("overrideSpeed", jsonBuffer["overrideSpeed"].as<uint8_t>());
+      preferences.putUInt("overrideSpeed", jsonBuffer["overrideSpeed"].as<uint8_t>());
       overrideSpeed = jsonBuffer["overrideSpeed"].as<uint8_t>();
 
       if (preferences.putBool("overridePoti", jsonBuffer["overrideSpeedPoti"].as<boolean>())) {
         overrideSpeedPoti = jsonBuffer["overrideSpeedPoti"].as<boolean>();
       }
+
+      preferences.putUInt("humidityThr", jsonBuffer["humidityThr"].as<uint8_t>());
+      humidityThr = jsonBuffer["humidityThr"].as<uint8_t>();
+
+      preferences.putUInt("humiditySpeed", jsonBuffer["humiditySpeed"].as<uint8_t>());
+      humiditySpeed = jsonBuffer["humiditySpeed"].as<uint8_t>();
 
       // MQTT Settings
       preferences.putUInt("mqttPort", jsonBuffer["mqttport"].as<uint16_t>());
@@ -216,9 +222,13 @@ void APIRegisterRoutes() {
 
         doc["runMixerAfterMinutes"] = preferences.getULong("runMixerAfter", runMixerAfter) / 60 / 1000 ;
         doc["noMixerBelowTempC"] = preferences.getInt("noMixerBelow", noMixerBelowTempC);
+
         doc["overrideSpeedPoti"] = preferences.getBool("overrideSpeedPoti", overrideSpeedPoti);
         doc["overrideSpeed"] = preferences.getUInt("overrideSpeed", overrideSpeed);
         
+        doc["humidityThr"] = preferences.getUInt("humidityThr", humidityThr);
+        doc["humiditySpeed"] = preferences.getUInt("humiditySpeed", humiditySpeed);
+
         // MQTT
         doc["enablemqtt"] = enableMqtt;
         doc["mqttport"] = preferences.getUInt("mqttPort", 1883);

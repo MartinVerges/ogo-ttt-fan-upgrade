@@ -7,6 +7,7 @@
 
   import Fa from 'svelte-fa/src/fa.svelte';
   import { faEngine } from '@fortawesome/pro-solid-svg-icons/faEngine';
+  import { faDropletPercent } from '@fortawesome/pro-solid-svg-icons/faDropletPercent';
   import { faGroupArrowsRotate } from '@fortawesome/pro-solid-svg-icons/faGroupArrowsRotate';
 
   let status = {
@@ -118,6 +119,8 @@
             <Fa icon={faGroupArrowsRotate} spin />
           {:else if status.stateDplus}
             <Fa icon={faEngine} />
+          {:else if status.stateDehumidification}
+            <Fa icon={faDropletPercent} />
           {/if}
         </h2>
       </div>

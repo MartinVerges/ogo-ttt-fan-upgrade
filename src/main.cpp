@@ -53,6 +53,8 @@ bool stateMixer = false;
 bool stateDplus = false;
 uint8_t statePoti = 0;
 
+bool stateDehumidification = false;
+
 // extern uint8_t __analogReturnedWidth;
 static uint16_t MAX_ADC_VALUE = 4096; // pow(2, __analogReturnedWidth);
 
@@ -196,8 +198,12 @@ void setup() {
 
   runMixerAfter = preferences.getULong("runMixerAfter", runMixerAfter);
   noMixerBelowTempC = preferences.getInt("noMixerBelow", noMixerBelowTempC);
+
   overrideSpeedPoti = preferences.getBool("overridePoti", overrideSpeedPoti);
   overrideSpeed = preferences.getUInt("overrideSpeed", overrideSpeed);
+
+  humidityThr = preferences.getUInt("humidityThr", humidityThr);
+  humiditySpeed = preferences.getUInt("humiditySpeed", humiditySpeed);
 
   if (enableWifi) initWifiAndServices();
   else LOG_INFO_LN(F("[WIFI] Not starting WiFi!"));
@@ -318,14 +324,21 @@ void loop() {
       digitalWrite(LED_BUILTIN, LOW);
       uint16_t potiRead = analogRead(SPEED_PIN);
       statePoti = map(potiRead, 0, MAX_ADC_VALUE, 0, 100);
-
-      if (overrideSpeedPoti) {
-        // Ignore potentiometer, use config value
-        if (overrideSpeed >= 100) targetPwmSpeed = PWM_MAX_DUTY_CYCLE;
-        else if(overrideSpeed <= 0) targetPwmSpeed = 0; // it's uint8, this should never happen ;)
-        else targetPwmSpeed = map(overrideSpeed, 0, 100, 0, PWM_MAX_DUTY_CYCLE);
+      if (currentHumidity >= humidityThr && humiditySpeed > 0) {
+        stateDehumidification = true;
+        // Dehumidification required, overruling all other options
+        if (humiditySpeed >= 100) targetPwmSpeed = PWM_MAX_DUTY_CYCLE;
+        else targetPwmSpeed = map(humiditySpeed, 0, 100, 0, PWM_MAX_DUTY_CYCLE);
       } else {
-        targetPwmSpeed = map(potiRead, 0, MAX_ADC_VALUE, 0, PWM_MAX_DUTY_CYCLE);
+        stateDehumidification = false;
+        if (overrideSpeedPoti) {
+          // Ignore potentiometer, use config value
+          if (overrideSpeed >= 100) targetPwmSpeed = PWM_MAX_DUTY_CYCLE;
+          else if(overrideSpeed <= 0) targetPwmSpeed = 0; // it's uint8, this should never happen ;)
+          else targetPwmSpeed = map(overrideSpeed, 0, 100, 0, PWM_MAX_DUTY_CYCLE);
+        } else {
+          targetPwmSpeed = map(potiRead, 0, MAX_ADC_VALUE, 0, PWM_MAX_DUTY_CYCLE);
+        }
       }
     }
     ledcWrite(PWM_CHANNEL, targetPwmSpeed);
@@ -338,19 +351,18 @@ void loop() {
     StaticJsonDocument<1024> jsonDoc;
 
     uint8_t fanSpeed = map(targetPwmSpeed, 0, PWM_MAX_DUTY_CYCLE, 0, 100);
-    LOG_INFO("FAN Target Speed: ");
-    LOG_INFO(fanSpeed);
-    LOG_INFO_LN('%');
+    LOG_INFO_F("FAN Target Speed: %d %%\n", fanSpeed);
 
     // Tacho Delay is not working, if the FAN doesn't provide the TACHO signal
     if (tachoDelay != 0) {
       unsigned long freq = 100000000 / tachoDelay;
-      LOG_INFO("FAN Tacho delay: "); LOG_INFO(tachoDelay); LOG_INFO_LN("µs");
-      LOG_INFO("FAN Frequency: ");   LOG_INFO(freq/100); LOG_INFO('.'); LOG_INFO(freq%100); LOG_INFO_LN("Hz");
+      LOG_INFO_F("FAN Tacho delay:  %d µs\n", tachoDelay);
+      LOG_INFO_F("FAN Frequency:    %d.%d Hz\n", freq/100, freq%100);
 
       freq *= 60;
       freq /= 200;
-      LOG_INFO("FAN Current RPM: "); LOG_INFO_LN(freq);
+      LOG_INFO_F("FAN Current RPM:  %d \n", freq);
+
       jsonDoc["stateFanRpm"] = freq;
       if (enableMqtt && Mqtt.isReady()) Mqtt.client.publish((Mqtt.mqttTopic + "/fan-rpm").c_str(), String(freq).c_str(), true);
     } else {
@@ -364,6 +376,7 @@ void loop() {
     jsonDoc["statePwmSpeed"] = fanSpeed;
     jsonDoc["stateTemperature"] = currentTemperature;
     jsonDoc["stateHumidity"] = currentHumidity;
+    jsonDoc["stateDehumidification"] = stateDehumidification;
 
     serializeJsonPretty(jsonDoc, jsonOutput);
     events.send(jsonOutput.c_str(), "status", millis());

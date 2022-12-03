@@ -49,6 +49,8 @@ unsigned int tachoDelay = 0;
 unsigned int targetPwmSpeed = PWM_MAX_DUTY_CYCLE * 0.25; // 0-1023 equals 0-100%, default to 25% speed
 bool overrideSpeedPoti = false;                   // Ignore the SPEED_PIN potentiometer value
 uint8_t overrideSpeed = 25;                       // If override==true, set the fan speed to this value
+uint8_t humidityThr = 75;                         // Threshold value to speed up on humidity level >= X
+uint8_t humiditySpeed = 80;                       // If humitidy >= Threshold, set the fan speed to this value
 
 bool otaRunning = false;
 
