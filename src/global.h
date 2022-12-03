@@ -47,6 +47,8 @@ int8_t noMixerBelowTempC = 10;                    // Temperature under which the
 unsigned long lastTachoInterrupt = 0;             // Microseconds of the last TACHO interrupt (pull down)
 unsigned int tachoDelay = 0;
 unsigned int targetPwmSpeed = PWM_MAX_DUTY_CYCLE * 0.25; // 0-1023 equals 0-100%, default to 25% speed
+bool overrideSpeedPoti = false;                   // Ignore the SPEED_PIN potentiometer value
+uint8_t overrideSpeed = 25;                       // If override==true, set the fan speed to this value
 
 bool otaRunning = false;
 

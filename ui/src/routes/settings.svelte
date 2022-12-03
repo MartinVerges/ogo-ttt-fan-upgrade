@@ -53,6 +53,11 @@
     <Input id="noMixerBelowTempC" bind:value={config.noMixerBelowTempC} placeholder="10" min="-255" max="255" type="number"/>
     <Label for="noMixerBelowTempC">Prevent automatic mixer runs below temperature in °C (default +10°C)</Label>
 </FormGroup>
+<FormGroup>
+    <Input id="overrideSpeedPoti" bind:checked={config.overrideSpeedPoti} type="checkbox" label="Override potentiometer speed value" />
+    <Input id="overrideSpeed" bind:value={config.overrideSpeed} placeholder="25" min="0" max="100" type="number" disabled={!config.overrideSpeedPoti} />
+    <Label for="overrideSpeed">Idle Speed setting 0-100%</Label>
+</FormGroup>
 <FormGroup> 
     <Label for="otapassword">OTA (Over The Air) firmware update password</Label>   
     <Input id="otapassword" bind:value={config.otapassword} placeholder="OTA Password" maxlength="32" />

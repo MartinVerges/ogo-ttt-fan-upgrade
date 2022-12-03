@@ -161,9 +161,20 @@ void APIRegisterRoutes() {
       }
 
       preferences.putString("otaPassword", jsonBuffer["otapassword"].as<String>());
-
+      ArduinoOTA.setPassword(jsonBuffer["otapassword"].as<String>().c_str());
+      
       preferences.putULong("runMixerAfter", jsonBuffer["runMixerAfterMinutes"].as<unsigned long>()*60*1000);
+      runMixerAfter = jsonBuffer["runMixerAfterMinutes"].as<unsigned long>()*60*1000;
+
       preferences.putInt("noMixerBelow", jsonBuffer["noMixerBelowTempC"].as<int8_t>());
+      noMixerBelowTempC = jsonBuffer["noMixerBelowTempC"].as<int8_t>();
+
+      preferences.putInt("overrideSpeed", jsonBuffer["overrideSpeed"].as<uint8_t>());
+      overrideSpeed = jsonBuffer["overrideSpeed"].as<uint8_t>();
+
+      if (preferences.putBool("overridePoti", jsonBuffer["overrideSpeedPoti"].as<boolean>())) {
+        overrideSpeedPoti = jsonBuffer["overrideSpeedPoti"].as<boolean>();
+      }
 
       // MQTT Settings
       preferences.putUInt("mqttPort", jsonBuffer["mqttport"].as<uint16_t>());
@@ -205,7 +216,9 @@ void APIRegisterRoutes() {
 
         doc["runMixerAfterMinutes"] = preferences.getULong("runMixerAfter", runMixerAfter) / 60 / 1000 ;
         doc["noMixerBelowTempC"] = preferences.getInt("noMixerBelow", noMixerBelowTempC);
-
+        doc["overrideSpeedPoti"] = preferences.getBool("overrideSpeedPoti", overrideSpeedPoti);
+        doc["overrideSpeed"] = preferences.getUInt("overrideSpeed", overrideSpeed);
+        
         // MQTT
         doc["enablemqtt"] = enableMqtt;
         doc["mqttport"] = preferences.getUInt("mqttPort", 1883);

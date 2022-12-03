@@ -196,6 +196,8 @@ void setup() {
 
   runMixerAfter = preferences.getULong("runMixerAfter", runMixerAfter);
   noMixerBelowTempC = preferences.getInt("noMixerBelow", noMixerBelowTempC);
+  overrideSpeedPoti = preferences.getBool("overridePoti", overrideSpeedPoti);
+  overrideSpeed = preferences.getUInt("overrideSpeed", overrideSpeed);
 
   if (enableWifi) initWifiAndServices();
   else LOG_INFO_LN(F("[WIFI] Not starting WiFi!"));
@@ -316,7 +318,15 @@ void loop() {
       digitalWrite(LED_BUILTIN, LOW);
       uint16_t potiRead = analogRead(SPEED_PIN);
       statePoti = map(potiRead, 0, MAX_ADC_VALUE, 0, 100);
-      targetPwmSpeed = map(potiRead, 0, MAX_ADC_VALUE, 0, PWM_MAX_DUTY_CYCLE);
+
+      if (overrideSpeedPoti) {
+        // Ignore potentiometer, use config value
+        if (overrideSpeed >= 100) targetPwmSpeed = PWM_MAX_DUTY_CYCLE;
+        else if(overrideSpeed <= 0) targetPwmSpeed = 0; // it's uint8, this should never happen ;)
+        else targetPwmSpeed = map(overrideSpeed, 0, 100, 0, PWM_MAX_DUTY_CYCLE);
+      } else {
+        targetPwmSpeed = map(potiRead, 0, MAX_ADC_VALUE, 0, PWM_MAX_DUTY_CYCLE);
+      }
     }
     ledcWrite(PWM_CHANNEL, targetPwmSpeed);
   }
