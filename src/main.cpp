@@ -84,7 +84,11 @@ void DHT_task(void *pvParameter) {
   LOG_INFO  (F("[DHT22] Min Value:   ")); LOG_INFO(sensor.min_value);  LOG_INFO_LN(F("%"));
   LOG_INFO  (F("[DHT22] Resolution:  ")); LOG_INFO(sensor.resolution); LOG_INFO_LN(F("%"));
   LOG_INFO_LN(F("------------------------------------"));
+
   // Set delay between sensor readings based on sensor details.
+  // We have to wait at least 2 seconds for DHT22, but we multiply to extend sleep time
+  // This reduces power consumtion and allows better temperature / humidity readings
+  uint32_t delayMS = sensor.min_delay / 1000 * 5;
 
   while(1) {
     sensors_event_t event;
@@ -92,19 +96,25 @@ void DHT_task(void *pvParameter) {
     if (isnan(event.temperature)) {
       LOG_INFO_LN(F("[DHT22] Error reading temperature!"));
     } else {
-      currentTemperature = event.temperature;
+      // Verify if that value can be true
+      if (event.temperature > 125.0 or event.temperature < -40.0) {
+        // out of Range
+        LOG_INFO_F("[DHT22] Temperature out of range: %0.2f\n", event.temperature);
+      } else currentTemperature = event.temperature;
     }
 
     dht.humidity().getEvent(&event);
     if (isnan(event.relative_humidity)) {
       LOG_INFO_LN(F("[DHT22] Error reading humidity!"));
     } else {
-      currentHumidity = event.relative_humidity;
+      if (event.relative_humidity > 100.0 or event.relative_humidity < 0.0) {
+        // out of Range
+        LOG_INFO_F("[DHT22] Humidity out of range: %0.2f\n", event.relative_humidity);
+      } else currentHumidity = event.relative_humidity;
     }
 
-    // -- wait at least 10 sec before reading again ------------
-    // The interval of whole process must be beyond 2 seconds !!
-    vTaskDelay(10 * 1000 / portTICK_RATE_MS);
+    // LOG_INFO_F("[DHT22] Sleeping for %d ms\n", delayMS);
+    vTaskDelay(delayMS / portTICK_RATE_MS);
   }
 }
 
@@ -205,8 +215,9 @@ void setup() {
   humidityThr = preferences.getUInt("humidityThr", humidityThr);
   humiditySpeed = preferences.getUInt("humiditySpeed", humiditySpeed);
 
-  if (enableWifi) initWifiAndServices();
-  else LOG_INFO_LN(F("[WIFI] Not starting WiFi!"));
+  if (enableWifi) {
+    initWifiAndServices();
+  } else LOG_INFO_LN(F("[WIFI] Not starting WiFi!"));
 
   String otaPassword = preferences.getString("otaPassword");
   if (otaPassword.isEmpty()) {
@@ -324,7 +335,7 @@ void loop() {
       digitalWrite(LED_BUILTIN, LOW);
       uint16_t potiRead = analogRead(SPEED_PIN);
       statePoti = map(potiRead, 0, MAX_ADC_VALUE, 0, 100);
-      if (currentHumidity >= humidityThr && humiditySpeed > 0) {
+      if (currentHumidity >= humidityThr && humidityThr > 0) {
         stateDehumidification = true;
         // Dehumidification required, overruling all other options
         if (humiditySpeed >= 100) targetPwmSpeed = PWM_MAX_DUTY_CYCLE;
@@ -351,17 +362,17 @@ void loop() {
     StaticJsonDocument<1024> jsonDoc;
 
     uint8_t fanSpeed = map(targetPwmSpeed, 0, PWM_MAX_DUTY_CYCLE, 0, 100);
-    LOG_INFO_F("FAN Target Speed: %d %%\n", fanSpeed);
+    LOG_INFO_F("FAN target speed: %d %%\n", fanSpeed);
 
     // Tacho Delay is not working, if the FAN doesn't provide the TACHO signal
     if (tachoDelay != 0) {
       unsigned long freq = 100000000 / tachoDelay;
-      LOG_INFO_F("FAN Tacho delay:  %d µs\n", tachoDelay);
-      LOG_INFO_F("FAN Frequency:    %d.%d Hz\n", freq/100, freq%100);
+      LOG_INFO_F("FAN tacho delay:  %d µs\n", tachoDelay);
+      LOG_INFO_F("FAN frequency:    %d.%d Hz\n", freq/100, freq%100);
 
       freq *= 60;
       freq /= 200;
-      LOG_INFO_F("FAN Current RPM:  %d \n", freq);
+      LOG_INFO_F("FAN current RPM:  %d \n", freq);
 
       jsonDoc["stateFanRpm"] = freq;
       if (enableMqtt && Mqtt.isReady()) Mqtt.client.publish((Mqtt.mqttTopic + "/fan-rpm").c_str(), String(freq).c_str(), true);
@@ -392,8 +403,7 @@ void loop() {
       Mqtt.client.publish((Mqtt.mqttTopic + "/humidity").c_str(), String(currentHumidity).c_str(), true);
     }
 
-    LOG_INFO_F("Temperature:      %d °C\n", currentTemperature);
-    LOG_INFO_F("Humidity:         %d %%\n", currentHumidity);
+    LOG_INFO_F("Temperature:      %.1f °C at %.1f %% humidity\n", currentTemperature, currentHumidity);
   }
   sleepOrDelay();
 }
