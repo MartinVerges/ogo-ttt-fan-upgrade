@@ -38,15 +38,17 @@ void APIRegisterRoutes() {
   webServer.on("/api/firmware/info", HTTP_GET, [&](AsyncWebServerRequest *request) {
     auto data = esp_ota_get_running_partition();
     String output;
-    StaticJsonDocument<16> doc;
+    DynamicJsonDocument doc(256);
     doc["partition_type"] = data->type;
     doc["partition_subtype"] = data->subtype;
     doc["address"] = data->address;
     doc["size"] = data->size;
     doc["label"] = data->label;
     doc["encrypted"] = data->encrypted;
+    doc["firmware_version"] = AUTO_FW_VERSION;
+    doc["firmware_date"] = AUTO_FW_DATE;
     serializeJson(doc, output);
-    request->send(500, "application/json", output);
+    request->send(200, "application/json", output);
   });
 
   webServer.on("/api/update/upload", HTTP_POST,
@@ -89,7 +91,7 @@ void APIRegisterRoutes() {
     if (final) {
       if (!Update.end(true)) {
         String output;
-        StaticJsonDocument<16> doc;
+        DynamicJsonDocument doc(32);
         doc["message"] = "Update error";
         doc["error"] = Update.errorString();
         serializeJson(doc, output);
@@ -211,7 +213,7 @@ void APIRegisterRoutes() {
   webServer.on("/api/config", HTTP_GET, [&](AsyncWebServerRequest *request) {
     if (request->contentType() == "application/json") {
       String output;
-      StaticJsonDocument<1024> doc;
+      DynamicJsonDocument doc(1024);
 
       if (preferences.begin(NVS_NAMESPACE, true)) {
         doc["hostname"] = hostName;
@@ -354,9 +356,12 @@ void APIRegisterRoutes() {
     if (request->method() == HTTP_OPTIONS) {
       request->send(200);
     } else {
-      if (request->contentType() == "application/json") {
+      AsyncWebServerResponse *response = request->beginResponse(LittleFS, "/index.html");
+      response->setCode(200);
+      request->send(response);
+/*    if (request->contentType() == "application/json") {
         request->send(404, "application/json", "{\"message\":\"Not found\"}");
-      } else request->send(404, "text/plain", "Not found");
+      } else request->send(404, "text/plain", "Not found");*/
     }
   });
 }
