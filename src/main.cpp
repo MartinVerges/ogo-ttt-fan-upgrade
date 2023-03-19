@@ -282,6 +282,12 @@ void softReset() {
 void loop() {
   ArduinoOTA.handle();
 
+  if (runtime() > UINT64_MAX - (1000 * 60 * 60 * 24)) {
+    // overflow in the next 24 hours, let's reset the ESP32 to prevent millis overflow side effects.
+    // Haven't figured out why, but it seems to cause some issues.
+    ESP.restart();
+  } 
+
   if (button1.pressed) {
     LOG_INFO_LN(F("[EVENT] Button pressed!"));
     button1.pressed = false;
